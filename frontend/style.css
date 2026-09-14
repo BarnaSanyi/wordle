@@ -191,3 +191,21 @@ header h1 {
 .row.shake {
     animation: shake 0.4s;
 }
+
+/* --- HULLÁM (WAVE) BELÉPŐ ANIMÁCIÓ --- */
+@keyframes waveEntrance {
+    0% {
+        transform: scale(0.3) translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.tile.wave {
+    /* Egy kis "rugózós" (cubic-bezier) időzítés, hogy játékosabb legyen */
+    animation: waveEntrance 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    opacity: 0; /* Kezdetben láthatatlan, amíg a delay le nem telik */
+}

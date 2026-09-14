@@ -21,7 +21,7 @@ async function fetchRandomWord() {
     }
 }
 
-// A játéktábla inicializálása
+// A játéktábla inicializálása hullámzó animációval
 function initBoard() {
     const boardContainer = document.getElementById("board");
     boardContainer.innerHTML = ""; 
@@ -31,10 +31,28 @@ function initBoard() {
         const row = document.createElement("div");
         row.classList.add("row");
         const rowTiles = [];
+        
         for (let c = 0; c < WORD_LENGTH; c++) {
             const tile = document.createElement("div");
             tile.classList.add("tile");
             tile.setAttribute("id", `tile-${r}-${c}`);
+            
+            // --- ÚJ: Hullám animáció beállítása ---
+            tile.classList.add("wave");
+            
+            // Késleltetés kiszámítása: (sor + oszlop) * 60 milliszekundum
+            // Így gyönyörű átlós hullámot kapunk bal fentről jobb le.
+            const delay = (r + c) * 60; 
+            tile.style.animationDelay = `${delay}ms`;
+            
+            // Amikor a belépő animáció befejeződött, letakarítjuk a class-t és a delay-t,
+            // hogy ne zavarjon be később a gépelés animációjának.
+            tile.addEventListener("animationend", () => {
+                tile.classList.remove("wave");
+                tile.style.animationDelay = "";
+            });
+            // ----------------------------------------
+
             row.appendChild(tile);
             rowTiles.push("");
         }
