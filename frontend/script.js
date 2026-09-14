@@ -277,3 +277,39 @@ document.addEventListener("keydown", (e) => {
 
 // Első játék indítása
 resetGame();
+
+// --- UNIVERZUM GENERÁLÁSA ---
+function createUniverse() {
+    const universe = document.createElement("div");
+    universe.id = "universe";
+    document.body.appendChild(universe);
+
+    const starCount = 150; // Ennyi csillag lesz a képernyőn
+
+    for (let i = 0; i < starCount; i++) {
+        const star = document.createElement("div");
+        
+        // Véletlenszerű méret sorsolása (70% kicsi, 25% közepes, 5% nagy)
+        const rand = Math.random();
+        let sizeClass = "star-small";
+        if (rand > 0.7) sizeClass = "star-medium";
+        if (rand > 0.95) sizeClass = "star-large";
+        
+        star.classList.add("star", sizeClass);
+        
+        // Véletlenszerű X és Y pozíció a képernyőn
+        star.style.left = `${Math.random() * 100}vw`;
+        star.style.top = `${Math.random() * 100}vh`;
+        
+        // Véletlenszerű pulzálási sebesség (2 és 5 másodperc között)
+        star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+        
+        // Véletlenszerű kezdési csúszás, hogy ne egyszerre villogjanak
+        star.style.animationDelay = `${Math.random() * 4}s`;
+        
+        universe.appendChild(star);
+    }
+}
+
+// Függvény meghívása az oldal betöltésekor
+createUniverse();
