@@ -97,6 +97,10 @@ function addLetter(letter) {
     if (currentTile < WORD_LENGTH) {
         const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
         tile.textContent = letter;
+        
+        // ÚJ: Hozzáadjuk a 'filled' osztályt, ami lejátssza a pop animációt és színt vált
+        tile.classList.add("filled"); 
+        
         board[currentRow][currentTile] = letter;
         currentTile++;
     }
@@ -107,26 +111,39 @@ function deleteLetter() {
         currentTile--;
         const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
         tile.textContent = "";
+        
+        // ÚJ: Levesszük a 'filled' osztályt, így visszakapja az alap sötét keretet
+        tile.classList.remove("filled"); 
+        
         board[currentRow][currentTile] = "";
     }
 }
 
 // Tipp ellenőrzése aszinkron módon az API-n keresztül
 async function checkGuess() {
+    // Segédfüggvény a rázkódás meghívásához
+    const triggerShake = () => {
+        const row = document.getElementsByClassName("row")[currentRow];
+        row.classList.remove("shake"); // Ha már rajta volt, levesszük
+        void row.offsetWidth; // DOM "újraolvasás" kikényszerítése, hogy újra lejátssza az animációt
+        row.classList.add("shake");
+    };
+
     if (currentTile !== WORD_LENGTH) {
         showMessage("Nincs elég betű!");
+        triggerShake(); // ÚJ: Sor megrázása
         return;
     }
 
     const guess = board[currentRow].join("");
     
-    // API hívás: Létezik a szó az adatbázisban?
     try {
         const response = await fetch(`/api/check-word/${guess}`);
         const data = await response.json();
         
         if (!data.exists) {
             showMessage("Nem létező szó!");
+            triggerShake(); // ÚJ: Sor megrázása, mert a szó nincs a szótárban
             return;
         }
     } catch (error) {
@@ -140,6 +157,9 @@ async function checkGuess() {
     for (let i = 0; i < WORD_LENGTH; i++) {
         const tile = document.getElementById(`tile-${currentRow}-${i}`);
         const letter = guess[i];
+        
+        // Töröljük a filled osztályt, hogy a zöld/sárga/szürke háttérszínek érvényesüljenek
+        tile.classList.remove("filled"); 
         
         if (letter === targetWord[i]) {
             tile.classList.add("correct");
