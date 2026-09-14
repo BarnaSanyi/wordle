@@ -1,0 +1,166 @@
+:root {
+    --bg-color: #121213;
+    --text-color: #ffffff;
+    --border-color: #3a3a3c;
+    --correct-color: #538d4e;
+    --present-color: #b59f3b;
+    --absent-color: #3a3a3c;
+    --key-bg: #818384;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+}
+
+.game-container {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 60px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+#board-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    margin-top: 20px;
+}
+
+#board {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    grid-gap: 5px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 5px;
+}
+
+.tile {
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--border-color);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.tile.correct {
+    background-color: var(--correct-color);
+    border-color: var(--correct-color);
+}
+
+.tile.present {
+    background-color: var(--present-color);
+    border-color: var(--present-color);
+}
+
+.tile.absent {
+    background-color: var(--absent-color);
+    border-color: var(--absent-color);
+}
+
+#keyboard-container {
+    padding: 10px;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.key {
+    background-color: var(--key-bg);
+    color: var(--text-color);
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    margin: 0 3px;
+    height: 58px;
+    cursor: pointer;
+    text-transform: uppercase;
+    flex: 1;
+    max-width: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.key.wide {
+    flex: 1.5;
+    max-width: 65px;
+    font-size: 0.8rem;
+}
+
+#message-container {
+    text-align: center;
+    font-weight: bold;
+    margin: 10px 0;
+    height: 20px;
+}
+
+/* Új játék gomb stílusai */
+#play-again-btn {
+    display: none; /* Alapból rejtve van */
+    margin: 0 auto 15px auto;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-color);
+    background-color: var(--correct-color);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+#play-again-btn:hover {
+    background-color: #63a85e; /* Kicsit világosabb zöld hoverkor */
+    transform: translateY(-2px);
+}
+
+#play-again-btn:active {
+    transform: translateY(1px);
+}
+
+#play-again-btn.visible {
+    display: block;
+}

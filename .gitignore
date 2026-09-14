@@ -1,0 +1,58 @@
+# ========================
+# Backend (Node.js)
+# ========================
+# Függőségek
+backend/node_modules/
+node_modules/
+
+# Naplófájlok (npm, yarn, pm2)
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+*.log
+
+# Környezeti változók (titkos kulcsok, jelszavak)
+.env
+.env.test
+.env.production
+
+# Adatbázis fájlok (Ne töltsük fel az élő adatbázist a Git-be!)
+*.db
+*.sqlite
+*.sqlite3
+backend/words.db
+words.db
+
+# ========================
+# Frontend
+# ========================
+# (Jelenleg statikus, de ha később bevezetsz valamilyen build toolt pl. Vite, React, Vue)
+frontend/dist/
+frontend/build/
+frontend/.cache/
+
+# ========================
+# Operációs rendszer fájlok
+# ========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ========================
+# Fejlesztői környezetek (IDE)
+# ========================
+# VS Code
+.vscode/
+
+# WebStorm / IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
