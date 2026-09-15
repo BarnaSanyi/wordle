@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azonosítás | Wordle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="glass-panel">
+            <h2 id="auth-title">Regisztráció</h2>
+            
+            <div id="auth-error"></div>
+
+            <!-- REGISZTRÁCIÓS ŰRLAP -->
+            <form id="register-form">
+                <div class="input-group">
+                    <label for="reg-username">Űrhajós név (Felhasználónév)</label>
+                    <input type="text" id="reg-username" required autocomplete="off" placeholder="pl. Apollo_11" maxlength="15">
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Titkos jelszó</label>
+                    <input type="password" id="reg-password" required placeholder="Minimum 6 karakter">
+                </div>
+                <button type="submit" class="auth-btn">Regisztráció</button>
+            </form>
+
+            <!-- BEJELENTKEZÉSI ŰRLAP (Alapból rejtve) -->
+            <form id="login-form" style="display: none;">
+                <div class="input-group">
+                    <label for="login-username">Űrhajós név</label>
+                    <input type="text" id="login-username" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Jelszó</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="auth-btn">Bejelentkezés</button>
+            </form>
+
+            <!-- VÁLTÓGOMB A KETTŐ KÖZÖTT -->
+            <div class="auth-switch">
+                <span id="switch-text">Már van fiókod?</span> 
+                <a href="#" id="switch-link">Jelentkezz be!</a><br><br>
+                <a href="index.html" style="color: white; opacity: 0.7;">&larr; Vissza a játékba</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        // Csillagos háttér generálása
+        function createUniverse() {
+            const universe = document.createElement("div");
+            universe.id = "universe";
+            document.body.appendChild(universe);
+            const starCount = 150;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement("div");
+                const sizeClass = Math.random() > 0.95 ? "star-large" : (Math.random() > 0.7 ? "star-medium" : "star-small");
+                star.classList.add("star", sizeClass);
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `${Math.random() * 100}vh`;
+                star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                star.style.animationDelay = `${Math.random() * 4}s`;
+                universe.appendChild(star);
+            }
+        }
+        createUniverse();
+    </script>
+</body>
+</html>

@@ -205,7 +205,7 @@ async function checkGuess() {
 
     if (guess === targetWord) {
         showMessage("Gratulálok, nyertél!");
-        endGame();
+        endGame(true, currentRow + 1); // <--- EZT ÍRD ÁT: true (nyert), és a tippek száma
         return;
     }
 
@@ -214,7 +214,7 @@ async function checkGuess() {
 
     if (currentRow === MAX_GUESSES) {
         showMessage(`Vége! A szó ez volt: ${targetWord}`);
-        endGame();
+        endGame(false, MAX_GUESSES); // <--- EZT ÍRD ÁT: false (vesztett)
     }
 }
 
@@ -243,9 +243,78 @@ function showMessage(msg) {
     }
 }
 
-function endGame() {
+// --- JÁTÉK VÉGE ÉS STATISZTIKA MENTÉSE ---
+function endGame(win, guesses) {
     isGameOver = true;
     document.getElementById("play-again-btn").classList.add("visible");
+    
+    // Elküldjük a backendnek az eredményt!
+    saveGameStats(win, guesses);
+}
+
+async function saveGameStats(win, guesses) {
+    const token = localStorage.getItem('wordle_token');
+    if (!token) return; // Ha vendég játszik, nem mentünk adatbázisba
+
+    try {
+        const response = await fetch('/api/game-end', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // Itt küldjük a titkos tokent!
+            },
+            body: JSON.stringify({ win, guesses })
+        });
+        
+        // Ha valamiért lejárt a token (pl 30 nap után)
+        if (response.status === 401 || response.status === 403) {
+            handleLogout();
+        }
+    } catch (err) {
+        console.error("Hiba a statisztika mentésekor", err);
+    }
+}
+
+// --- BEJELENTKEZÉSI UI KEZELÉSE ---
+function setupAuthUI() {
+    const username = localStorage.getItem('wordle_username');
+    const profileBtn = document.getElementById('profile-btn');
+    const dropdown = document.getElementById('dropdown-menu');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    if (username) {
+        // Ha be van jelentkezve
+        profileBtn.textContent = username;
+        profileBtn.classList.add('logged-in');
+        
+        // Klikk a névre -> lenyílik a menü
+        profileBtn.onclick = (e) => {
+            e.stopPropagation(); // Ne záródjon be azonnal
+            dropdown.classList.toggle('active');
+        };
+
+        // Bárhova máshova kattint a képernyőn, záruljon be a menü
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && e.target !== profileBtn) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        logoutBtn.onclick = handleLogout;
+    } else {
+        // Vendég mód
+        profileBtn.textContent = '👤';
+        profileBtn.classList.remove('logged-in');
+        profileBtn.onclick = () => {
+            window.location.href = 'auth.html';
+        };
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('wordle_token');
+    localStorage.removeItem('wordle_username');
+    window.location.reload(); // Újratölti az oldalt, vendégként
 }
 
 // Új játék indítása és állapotok nullázása
@@ -274,9 +343,6 @@ document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     handleInput(e.key);
 });
-
-// Első játék indítása
-resetGame();
 
 // --- UNIVERZUM GENERÁLÁSA ---
 function createUniverse() {
@@ -311,5 +377,125 @@ function createUniverse() {
     }
 }
 
-// Függvény meghívása az oldal betöltésekor
-createUniverse();
+// --- RANGLISTA (LEADERBOARD) LOGIKA ---
+const leaderboardBtn = document.getElementById('leaderboard-btn');
+const modalOverlay = document.getElementById('leaderboard-modal');
+const closeModal = document.getElementById('close-modal');
+const tabBtns = document.querySelectorAll('.tab-btn');
+const boards = document.querySelectorAll('.board');
+
+// Modal megnyitása és adatok letöltése
+leaderboardBtn.addEventListener('click', async () => {
+    modalOverlay.classList.add('active');
+    await fetchLeaderboards();
+});
+
+// Modal bezárása
+closeModal.addEventListener('click', () => {
+    modalOverlay.classList.remove('active');
+});
+
+// Zárás, ha a sötét háttérre kattint
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+});
+
+// Fülek (Tabok) váltása
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Gombok stílusának cseréje
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Táblázatok cseréje
+        boards.forEach(b => b.classList.remove('active'));
+        const targetId = btn.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+    });
+});
+
+// Ranglisták lekérése a szervertől és megjelenítése
+async function fetchLeaderboards() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        
+        // Ha a szerver hibaüzenetet küld (pl. 500-as kód)
+        if (!response.ok) {
+            throw new Error(`Szerver hiba: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Ellenőrizzük, hogy a szerver tényleg a várt struktúrát küldte-e
+        if (!data.score || !data.streak || !data.average) {
+            throw new Error("Hibás adatszerkezet érkezett a szervertől.");
+        }
+
+        // 1. Galaktikus Pontok
+        renderTable('board-score', data.score, 'Pont');
+        
+        // 2. Nyerő Széria
+        renderTable('board-streak', data.streak, 'Széria');
+        
+        // 3. Precízió (Átlag)
+        renderTable('board-average', data.average, 'Átlag');
+
+    } catch (error) {
+        console.error("Ranglista hiba:", error);
+        // Mind a 3 táblázat helyére kiírjuk a hibát, hogy ne ragadjanak be
+        document.getElementById('board-score').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
+        document.getElementById('board-streak').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
+        document.getElementById('board-average').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
+    }
+}
+
+// Segédfüggvény: HTML táblázat generálása egy tömbből
+function renderTable(containerId, dataArray, valueLabel) {
+    const container = document.getElementById(containerId);
+    
+    if (dataArray.length === 0) {
+        container.innerHTML = "<p style='text-align:center; padding: 20px; color:#aaa;'>Még nincs adat.</p>";
+        return;
+    }
+
+    let html = `<table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Űrhajós Név</th>
+                            <th style="text-align: right;">${valueLabel}</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+    dataArray.forEach((player, index) => {
+        const rank = index + 1;
+        // Az első 3 helyezett kap egyedi CSS osztályt (arany, ezüst, bronz)
+        const rankClass = rank <= 3 ? `rank-${rank}` : '';
+        
+        // Kinyerjük az értéket attól függően, melyik listában vagyunk
+        const value = player.score !== undefined ? player.score 
+                    : player.max_streak !== undefined ? player.max_streak 
+                    : player.avg;
+
+        html += `<tr>
+                    <td class="${rankClass}">${rank}.</td>
+                    <td class="${rankClass}">${player.username}</td>
+                    <td style="text-align: right; font-family: monospace;">${value}</td>
+                 </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    
+    // Extra infó a Precíziós listához
+    if (containerId === 'board-average') {
+        html += `<p style="font-size: 0.8rem; color: #888; text-align: center; margin-top: 15px;">Csak a legalább 5 játékkal rendelkező játékosok láthatóak.</p>`;
+    }
+
+    container.innerHTML = html;
+}
+
+// --- FÜGGVÉNYEK MEGHÍVÁSA INDÍTÁSKOR ---
+setupAuthUI(); // Beállítja a headert
+resetGame();   // Lekéri a szót és indítja a táblát
+createUniverse(); // Háttér

@@ -10,6 +10,17 @@
     <div class="game-container">
         <header>
             <h1>WORDLE</h1>
+            
+            <div class="header-actions">
+                <button id="leaderboard-btn" class="profile-btn">🏆</button>
+                
+                <div class="user-menu-container">
+                    <button id="profile-btn" class="profile-btn">👤</button>
+                    <div id="dropdown-menu" class="dropdown-menu">
+                        <button id="logout-btn">Kijelentkezés</button>
+                    </div>
+                </div>
+            </div>
         </header>
         
         <div id="board-container">
@@ -23,6 +34,28 @@
 
         <div id="keyboard-container">
             <!-- A billentyűzetet a JS generálja -->
+        </div>
+    </div>
+
+    <!-- ÚJ: RANGLISTA FELUGRÓ ABLAK (MODAL) -->
+    <div id="leaderboard-modal" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <button id="close-modal">&times;</button>
+            <h2>Csillagközi Ranglista</h2>
+            
+            <!-- A 3 fül -->
+            <div class="tabs">
+                <button class="tab-btn active" data-target="board-score">Galaktikus Pontok</button>
+                <button class="tab-btn" data-target="board-streak">Nyerő Széria</button>
+                <button class="tab-btn" data-target="board-average">Precízió (Átlag)</button>
+            </div>
+
+            <!-- A táblázatok helye -->
+            <div class="boards-container">
+                <div id="board-score" class="board active">Betöltés...</div>
+                <div id="board-streak" class="board">Betöltés...</div>
+                <div id="board-average" class="board">Betöltés...</div>
+            </div>
         </div>
     </div>
 
