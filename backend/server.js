@@ -232,3 +232,44 @@ app.get('/api/leaderboard', (req, res) => {
         });
     });
 });
+
+// --- ÚJ VÉGPONT: SAJÁT STATISZTIKA ÉS HELYEZÉS (HUD) ---
+app.get('/api/my-stats', authenticateToken, (req, res) => {
+    const userId = req.user.userId;
+
+    // Lekérjük a játékos saját adatait
+    db.get("SELECT score, max_streak, games_played, total_guesses FROM users WHERE id = ?", [userId], (err, user) => {
+        if (err || !user) return res.status(500).json({ error: "Felhasználó nem található." });
+
+        const stats = {
+            score: user.score,
+            streak: user.max_streak,
+            avg: user.games_played > 0 ? (user.total_guesses / user.games_played).toFixed(2) : 0,
+            ranks: { score: "-", streak: "-", average: "-" }
+        };
+
+        // Segédfüggvény a helyezések kiszámolására
+        const getRank = (query, param) => new Promise((resolve) => {
+            db.get(query, [param], (err, row) => {
+                if (err) resolve("-");
+                else resolve(row.rank);
+            });
+        });
+
+        // Kiszámoljuk mind a 3 helyezést (Megnézzük, hány embernek van TÖBB pontja/szériája, + 1)
+        Promise.all([
+            getRank("SELECT COUNT(*) + 1 AS rank FROM users WHERE score > ?", user.score),
+            getRank("SELECT COUNT(*) + 1 AS rank FROM users WHERE max_streak > ?", user.max_streak),
+            user.games_played >= 5 
+                ? getRank("SELECT COUNT(*) + 1 AS rank FROM users WHERE games_played >= 5 AND (CAST(total_guesses AS FLOAT) / games_played) < ?", user.total_guesses / user.games_played) 
+                : Promise.resolve("-")
+        ]).then(([scoreRank, streakRank, avgRank]) => {
+            // Csak akkor adunk helyezést, ha már van pontja/szériája
+            stats.ranks.score = user.score > 0 ? scoreRank : "-";
+            stats.ranks.streak = user.max_streak > 0 ? streakRank : "-";
+            stats.ranks.average = user.games_played >= 5 ? avgRank : "-";
+            
+            res.json(stats);
+        }).catch(() => res.status(500).json({ error: "Hiba a rangok számításánál." }));
+    });
+});

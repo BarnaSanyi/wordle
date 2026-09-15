@@ -1,29 +1,47 @@
-// Globális változók
-let targetWord = "";
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
-
+let board = [];
 let currentRow = 0;
 let currentTile = 0;
+let targetWord = "";
 let isGameOver = false;
-let board = [];
+let isChecking = false; // Védelem a gyors Enter nyomogatás ellen
 
-// API hívás: Random szó lekérése a backendről
-async function fetchRandomWord() {
+// --- 1. JÁTÉK ÉS BILLENTYŰZET INICIALIZÁLÁSA ---
+async function resetGame() {
+    currentRow = 0;
+    currentTile = 0;
+    isGameOver = false;
+    isChecking = false;
+    
+    const playAgainBtn = document.getElementById("play-again-btn");
+    if (playAgainBtn) playAgainBtn.classList.remove("visible");
+    
+    const msgContainer = document.getElementById("message-container");
+    if (msgContainer) msgContainer.textContent = "";
+    
+    // Billentyűzet színeinek teljes törlése (CSS és direkt stílusok is)
+    document.querySelectorAll(".key").forEach(key => {
+        key.classList.remove("correct", "present", "absent");
+        key.style.backgroundColor = "";
+        key.style.borderColor = "";
+        key.style.color = "";
+    });
+
+    initBoard();
+    
     try {
         const response = await fetch('/api/random-word');
-        if (!response.ok) throw new Error("Hálózati hiba");
         const data = await response.json();
-        targetWord = data.word;
-    } catch (error) {
-        console.error("Hiba az API híváskor:", error);
-        showMessage("Hiba a szerverrel való kapcsolatban.");
+        targetWord = data.word.toUpperCase();
+    } catch (err) {
+        showMessage("Hiba a szó betöltésekor!");
     }
 }
 
-// A játéktábla inicializálása hullámzó animációval
 function initBoard() {
     const boardContainer = document.getElementById("board");
+    if (!boardContainer) return;
     boardContainer.innerHTML = ""; 
     board = [];
 
@@ -37,21 +55,15 @@ function initBoard() {
             tile.classList.add("tile");
             tile.setAttribute("id", `tile-${r}-${c}`);
             
-            // --- ÚJ: Hullám animáció beállítása ---
+            // Hullám animáció
             tile.classList.add("wave");
-            
-            // Késleltetés kiszámítása: (sor + oszlop) * 60 milliszekundum
-            // Így gyönyörű átlós hullámot kapunk bal fentről jobb le.
             const delay = (r + c) * 60; 
             tile.style.animationDelay = `${delay}ms`;
             
-            // Amikor a belépő animáció befejeződött, letakarítjuk a class-t és a delay-t,
-            // hogy ne zavarjon be később a gépelés animációjának.
             tile.addEventListener("animationend", () => {
                 tile.classList.remove("wave");
                 tile.style.animationDelay = "";
             });
-            // ----------------------------------------
 
             row.appendChild(tile);
             rowTiles.push("");
@@ -61,64 +73,48 @@ function initBoard() {
     }
 }
 
-// Billentyűzet inicializálása
 function initKeyboard() {
+    const keyboardContainer = document.getElementById("keyboard-container");
+    if (!keyboardContainer) return;
+    keyboardContainer.innerHTML = ""; 
+
     const keys = [
         ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
         ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-        ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"]
+        ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DEL"]
     ];
 
-    const keyboardContainer = document.getElementById("keyboard-container");
-    keyboardContainer.innerHTML = ""; 
-
     keys.forEach(row => {
-        const rowEl = document.createElement("div");
-        rowEl.classList.add("keyboard-row");
+        const rowElem = document.createElement("div");
+        rowElem.classList.add("keyboard-row");
         
         row.forEach(key => {
-            const button = document.createElement("button");
-            button.textContent = key === "BACKSPACE" ? "⌫" : key;
-            button.classList.add("key");
-            button.setAttribute("id", `key-${key}`);
-            if (key === "ENTER" || key === "BACKSPACE") {
-                button.classList.add("wide");
-            }
-            button.addEventListener("click", () => handleInput(key));
-            rowEl.appendChild(button);
+            const keyElem = document.createElement("button");
+            keyElem.classList.add("key");
+            keyElem.setAttribute("data-key", key);
+            keyElem.textContent = key;
+            
+            if (key === "ENTER" || key === "DEL") keyElem.classList.add("wide");
+            
+            keyElem.addEventListener("click", () => {
+                if (isGameOver || isChecking) return;
+                if (key === "ENTER") checkGuess();
+                else if (key === "DEL") deleteLetter();
+                else addLetter(key);
+            });
+            
+            rowElem.appendChild(keyElem);
         });
-        
-        keyboardContainer.appendChild(rowEl);
+        keyboardContainer.appendChild(rowElem);
     });
 }
 
-// Beviteli logika
-function handleInput(key) {
-    if (isGameOver) return;
-
-    if (key === "BACKSPACE" || key === "Backspace") {
-        deleteLetter();
-        return;
-    }
-
-    if (key === "ENTER" || key === "Enter") {
-        checkGuess();
-        return;
-    }
-
-    if (/^[A-Z]$/.test(key.toUpperCase())) {
-        addLetter(key.toUpperCase());
-    }
-}
-
+// --- 2. JÁTÉKMENET ÉS INPUT ---
 function addLetter(letter) {
     if (currentTile < WORD_LENGTH) {
         const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
         tile.textContent = letter;
-        
-        // ÚJ: Hozzáadjuk a 'filled' osztályt, ami lejátssza a pop animációt és színt vált
-        tile.classList.add("filled"); 
-        
+        tile.classList.add("filled");
         board[currentRow][currentTile] = letter;
         currentTile++;
     }
@@ -129,30 +125,19 @@ function deleteLetter() {
         currentTile--;
         const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
         tile.textContent = "";
-        
-        // ÚJ: Levesszük a 'filled' osztályt, így visszakapja az alap sötét keretet
-        tile.classList.remove("filled"); 
-        
+        tile.classList.remove("filled");
         board[currentRow][currentTile] = "";
     }
 }
 
-// Tipp ellenőrzése aszinkron módon az API-n keresztül
 async function checkGuess() {
-    // Segédfüggvény a rázkódás meghívásához
-    const triggerShake = () => {
-        const row = document.getElementsByClassName("row")[currentRow];
-        row.classList.remove("shake"); // Ha már rajta volt, levesszük
-        void row.offsetWidth; // DOM "újraolvasás" kikényszerítése, hogy újra lejátssza az animációt
-        row.classList.add("shake");
-    };
-
     if (currentTile !== WORD_LENGTH) {
         showMessage("Nincs elég betű!");
-        triggerShake(); // ÚJ: Sor megrázása
+        triggerShake();
         return;
     }
 
+    isChecking = true; // Zárjuk a bemenetet
     const guess = board[currentRow].join("");
     
     try {
@@ -161,22 +146,22 @@ async function checkGuess() {
         
         if (!data.exists) {
             showMessage("Nem létező szó!");
-            triggerShake(); // ÚJ: Sor megrázása, mert a szó nincs a szótárban
+            triggerShake();
+            isChecking = false;
             return;
         }
     } catch (error) {
         showMessage("Hiba az ellenőrzéskor.");
+        isChecking = false;
         return;
     }
 
     let targetWordCopy = targetWord;
     
-    // Első kör: Zöldek (pontos egyezés) ellenőrzése
+    // Zöldek (pontos egyezés)
     for (let i = 0; i < WORD_LENGTH; i++) {
         const tile = document.getElementById(`tile-${currentRow}-${i}`);
         const letter = guess[i];
-        
-        // Töröljük a filled osztályt, hogy a zöld/sárga/szürke háttérszínek érvényesüljenek
         tile.classList.remove("filled"); 
         
         if (letter === targetWord[i]) {
@@ -186,7 +171,7 @@ async function checkGuess() {
         }
     }
 
-    // Második kör: Sárgák és Szürkék ellenőrzése
+    // Sárgák és Szürkék
     for (let i = 0; i < WORD_LENGTH; i++) {
         const tile = document.getElementById(`tile-${currentRow}-${i}`);
         const letter = guess[i];
@@ -205,297 +190,281 @@ async function checkGuess() {
 
     if (guess === targetWord) {
         showMessage("Gratulálok, nyertél!");
-        endGame(true, currentRow + 1); // <--- EZT ÍRD ÁT: true (nyert), és a tippek száma
+        endGame(true, currentRow + 1);
+        isChecking = false;
         return;
     }
 
     currentRow++;
     currentTile = 0;
+    isChecking = false;
 
     if (currentRow === MAX_GUESSES) {
         showMessage(`Vége! A szó ez volt: ${targetWord}`);
-        endGame(false, MAX_GUESSES); // <--- EZT ÍRD ÁT: false (vesztett)
+        endGame(false, MAX_GUESSES);
     }
 }
 
-function updateKeyColor(letter, colorClass) {
-    const key = document.getElementById(`key-${letter}`);
+function triggerShake() {
+    const row = document.getElementsByClassName("row")[currentRow];
+    if (row) {
+        row.classList.remove("shake");
+        void row.offsetWidth; 
+        row.classList.add("shake");
+    }
+}
+
+// ERŐSZAKOS SZÍNEZÉS: Ez garantálja, hogy a CSS ne tudja elrontani a gombokat!
+function updateKeyColor(letter, status) {
+    const key = document.querySelector(`.key[data-key="${letter}"]`);
     if (!key) return;
-    
-    if (key.style.backgroundColor === 'var(--correct-color)') return;
-    
-    if (colorClass === 'correct') {
-        key.style.backgroundColor = 'var(--correct-color)';
-    } else if (colorClass === 'present' && key.style.backgroundColor !== 'var(--correct-color)') {
-        key.style.backgroundColor = 'var(--present-color)';
-    } else if (colorClass === 'absent' && key.style.backgroundColor === '') {
-        key.style.backgroundColor = 'var(--absent-color)';
+
+    if (status === "correct") {
+        key.classList.remove("present", "absent");
+        key.classList.add("correct");
+        key.style.backgroundColor = "var(--ok)";
+        key.style.borderColor = "var(--ok)";
+    } else if (status === "present" && !key.classList.contains("correct")) {
+        key.classList.remove("absent");
+        key.classList.add("present");
+        key.style.backgroundColor = "var(--has)";
+        key.style.borderColor = "var(--has)";
+    } else if (status === "absent" && !key.classList.contains("correct") && !key.classList.contains("present")) {
+        key.classList.add("absent");
+        key.style.backgroundColor = "var(--no)";
+        key.style.borderColor = "var(--no)";
     }
 }
 
 function showMessage(msg) {
-    const msgContainer = document.getElementById("message-container");
-    msgContainer.textContent = msg;
-    if (!isGameOver) {
-        setTimeout(() => {
-            if (!isGameOver) msgContainer.textContent = "";
-        }, 2000);
+    const container = document.getElementById("message-container");
+    if (container) {
+        container.textContent = msg;
+        setTimeout(() => { container.textContent = ""; }, 2500);
     }
 }
 
-// --- JÁTÉK VÉGE ÉS STATISZTIKA MENTÉSE ---
+// --- 3. JÁTÉK VÉGE ÉS STATISZTIKA (HUD) MENTÉSE ---
 function endGame(win, guesses) {
     isGameOver = true;
-    document.getElementById("play-again-btn").classList.add("visible");
-    
-    // Elküldjük a backendnek az eredményt!
+    const btn = document.getElementById("play-again-btn");
+    if (btn) btn.classList.add("visible");
     saveGameStats(win, guesses);
 }
 
 async function saveGameStats(win, guesses) {
     const token = localStorage.getItem('wordle_token');
-    if (!token) return; // Ha vendég játszik, nem mentünk adatbázisba
+    if (!token) return; 
 
     try {
         const response = await fetch('/api/game-end', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // Itt küldjük a titkos tokent!
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ win, guesses })
         });
         
-        // Ha valamiért lejárt a token (pl 30 nap után)
         if (response.status === 401 || response.status === 403) {
             handleLogout();
+        } else {
+            updatePlayerHUD();
         }
     } catch (err) {
         console.error("Hiba a statisztika mentésekor", err);
     }
 }
 
-// --- BEJELENTKEZÉSI UI KEZELÉSE ---
+// --- 4. BEJELENTKEZÉSI UI (HUD) KEZELÉSE ---
 function setupAuthUI() {
     const username = localStorage.getItem('wordle_username');
     const profileBtn = document.getElementById('profile-btn');
     const dropdown = document.getElementById('dropdown-menu');
     const logoutBtn = document.getElementById('logout-btn');
 
+    if (!profileBtn) return; // Ha auth.html-en vagyunk, lépjen ki
+
     if (username) {
-        // Ha be van jelentkezve
         profileBtn.textContent = username;
         profileBtn.classList.add('logged-in');
         
-        // Klikk a névre -> lenyílik a menü
         profileBtn.onclick = (e) => {
-            e.stopPropagation(); // Ne záródjon be azonnal
-            dropdown.classList.toggle('active');
+            e.stopPropagation();
+            if(dropdown) dropdown.classList.toggle('active');
         };
 
-        // Bárhova máshova kattint a képernyőn, záruljon be a menü
         document.addEventListener('click', (e) => {
-            if (!dropdown.contains(e.target) && e.target !== profileBtn) {
+            if (dropdown && !dropdown.contains(e.target) && e.target !== profileBtn) {
                 dropdown.classList.remove('active');
             }
         });
 
-        logoutBtn.onclick = handleLogout;
+        if(logoutBtn) logoutBtn.onclick = handleLogout;
+        updatePlayerHUD(); 
     } else {
-        // Vendég mód
         profileBtn.textContent = '👤';
         profileBtn.classList.remove('logged-in');
-        profileBtn.onclick = () => {
-            window.location.href = 'auth.html';
-        };
+        profileBtn.onclick = () => { window.location.href = 'auth.html'; };
     }
 }
 
 function handleLogout() {
     localStorage.removeItem('wordle_token');
     localStorage.removeItem('wordle_username');
-    window.location.reload(); // Újratölti az oldalt, vendégként
+    window.location.reload(); 
 }
 
-// Új játék indítása és állapotok nullázása
-async function resetGame() {
-    currentRow = 0;
-    currentTile = 0;
-    isGameOver = false;
+async function updatePlayerHUD() {
+    const token = localStorage.getItem('wordle_token');
     
-    document.getElementById("message-container").textContent = "";
-    document.getElementById("play-again-btn").classList.remove("visible");
+    if (!token) {
+        document.body.classList.remove('logged-in-state');
+        return;
+    }
 
-    initBoard();
-    initKeyboard();
-    
-    // Megvárjuk, amíg az SQLite adatbázisból megérkezik az új szó
-    await fetchRandomWord();
+    try {
+        const response = await fetch('/api/my-stats', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Ez a sor adja ki a parancsot a CSS-nek, hogy jelenítse meg a paneleket
+            document.body.classList.add('logged-in-state');
+            
+            // Mind a gépes, mind a mobilos HUD-ot frissítjük egyszerre!
+            document.querySelectorAll('.hud-score').forEach(el => el.textContent = data.score);
+            document.querySelectorAll('.hud-rank-score').forEach(el => el.textContent = data.ranks.score !== "-" ? `#${data.ranks.score}` : "-");
+            
+            document.querySelectorAll('.hud-streak').forEach(el => el.textContent = data.streak);
+            document.querySelectorAll('.hud-rank-streak').forEach(el => el.textContent = data.ranks.streak !== "-" ? `#${data.ranks.streak}` : "-");
+            
+            document.querySelectorAll('.hud-avg').forEach(el => el.textContent = data.avg);
+            document.querySelectorAll('.hud-rank-avg').forEach(el => el.textContent = data.ranks.average !== "-" ? `#${data.ranks.average}` : "-");
+        } else {
+            document.body.classList.remove('logged-in-state');
+        }
+    } catch (err) {
+        console.error("Hiba a HUD betöltésekor", err);
+    }
 }
 
-// Eseménykezelők
-document.getElementById("play-again-btn").addEventListener("click", () => {
-    resetGame();
-    document.getElementById("play-again-btn").blur(); 
-});
+// --- 5. RANGLISTA (LEADERBOARD) ---
+function setupLeaderboard() {
+    const leaderboardBtn = document.getElementById('leaderboard-btn');
+    const modalOverlay = document.getElementById('leaderboard-modal');
+    const closeModal = document.getElementById('close-modal');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const boards = document.querySelectorAll('.board');
 
-document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey || e.altKey || e.metaKey) return;
-    handleInput(e.key);
-});
+    if (!leaderboardBtn || !modalOverlay) return;
 
-// --- UNIVERZUM GENERÁLÁSA ---
+    leaderboardBtn.addEventListener('click', async () => {
+        modalOverlay.classList.add('active');
+        await fetchLeaderboards();
+    });
+
+    closeModal.addEventListener('click', () => modalOverlay.classList.remove('active'));
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('active'); });
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            boards.forEach(b => b.classList.remove('active'));
+            document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+        });
+    });
+}
+
+async function fetchLeaderboards() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        if (!response.ok) throw new Error(`Szerver hiba: ${response.status}`);
+        
+        const data = await response.json();
+        if (!data.score) throw new Error("Hibás adatszerkezet");
+
+        renderTable('board-score', data.score, 'Pont');
+        renderTable('board-streak', data.streak, 'Széria');
+        renderTable('board-average', data.average, 'Átlag');
+    } catch (error) {
+        const errorHtml = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
+        ['board-score', 'board-streak', 'board-average'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.innerHTML = errorHtml;
+        });
+    }
+}
+
+function renderTable(containerId, dataArray, valueLabel) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (!dataArray || dataArray.length === 0) {
+        container.innerHTML = "<p style='text-align:center; padding: 20px; color:#aaa;'>Még nincs adat.</p>";
+        return;
+    }
+
+    let html = `<table class="leaderboard-table"><thead><tr><th>#</th><th>Űrhajós Név</th><th style="text-align: right;">${valueLabel}</th></tr></thead><tbody>`;
+
+    dataArray.forEach((player, index) => {
+        const rank = index + 1;
+        const rankClass = rank <= 3 ? `rank-${rank}` : '';
+        const value = player.score !== undefined ? player.score : player.max_streak !== undefined ? player.max_streak : player.avg;
+
+        html += `<tr><td class="${rankClass}">${rank}.</td><td class="${rankClass}">${player.username}</td><td style="text-align: right; font-family: monospace;">${value}</td></tr>`;
+    });
+
+    html += `</tbody></table>`;
+    if (containerId === 'board-average') html += `<p style="font-size: 0.8rem; color: #888; text-align: center; margin-top: 15px;">Csak a legalább 5 játékkal rendelkező játékosok láthatóak.</p>`;
+    container.innerHTML = html;
+}
+
+// --- 6. UNIVERZUM GENERÁLÁSA ---
 function createUniverse() {
     const universe = document.createElement("div");
     universe.id = "universe";
     document.body.appendChild(universe);
 
-    const starCount = 150; // Ennyi csillag lesz a képernyőn
-
-    for (let i = 0; i < starCount; i++) {
+    for (let i = 0; i < 150; i++) {
         const star = document.createElement("div");
-        
-        // Véletlenszerű méret sorsolása (70% kicsi, 25% közepes, 5% nagy)
         const rand = Math.random();
         let sizeClass = "star-small";
         if (rand > 0.7) sizeClass = "star-medium";
         if (rand > 0.95) sizeClass = "star-large";
         
         star.classList.add("star", sizeClass);
-        
-        // Véletlenszerű X és Y pozíció a képernyőn
         star.style.left = `${Math.random() * 100}vw`;
         star.style.top = `${Math.random() * 100}vh`;
-        
-        // Véletlenszerű pulzálási sebesség (2 és 5 másodperc között)
         star.style.animationDuration = `${Math.random() * 3 + 2}s`;
-        
-        // Véletlenszerű kezdési csúszás, hogy ne egyszerre villogjanak
         star.style.animationDelay = `${Math.random() * 4}s`;
-        
         universe.appendChild(star);
     }
 }
 
-// --- RANGLISTA (LEADERBOARD) LOGIKA ---
-const leaderboardBtn = document.getElementById('leaderboard-btn');
-const modalOverlay = document.getElementById('leaderboard-modal');
-const closeModal = document.getElementById('close-modal');
-const tabBtns = document.querySelectorAll('.tab-btn');
-const boards = document.querySelectorAll('.board');
-
-// Modal megnyitása és adatok letöltése
-leaderboardBtn.addEventListener('click', async () => {
-    modalOverlay.classList.add('active');
-    await fetchLeaderboards();
-});
-
-// Modal bezárása
-closeModal.addEventListener('click', () => {
-    modalOverlay.classList.remove('active');
-});
-
-// Zárás, ha a sötét háttérre kattint
-modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) modalOverlay.classList.remove('active');
-});
-
-// Fülek (Tabok) váltása
-tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        // Gombok stílusának cseréje
-        tabBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        // Táblázatok cseréje
-        boards.forEach(b => b.classList.remove('active'));
-        const targetId = btn.getAttribute('data-target');
-        document.getElementById(targetId).classList.add('active');
-    });
-});
-
-// Ranglisták lekérése a szervertől és megjelenítése
-async function fetchLeaderboards() {
-    try {
-        const response = await fetch('/api/leaderboard');
-        
-        // Ha a szerver hibaüzenetet küld (pl. 500-as kód)
-        if (!response.ok) {
-            throw new Error(`Szerver hiba: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        // Ellenőrizzük, hogy a szerver tényleg a várt struktúrát küldte-e
-        if (!data.score || !data.streak || !data.average) {
-            throw new Error("Hibás adatszerkezet érkezett a szervertől.");
-        }
-
-        // 1. Galaktikus Pontok
-        renderTable('board-score', data.score, 'Pont');
-        
-        // 2. Nyerő Széria
-        renderTable('board-streak', data.streak, 'Széria');
-        
-        // 3. Precízió (Átlag)
-        renderTable('board-average', data.average, 'Átlag');
-
-    } catch (error) {
-        console.error("Ranglista hiba:", error);
-        // Mind a 3 táblázat helyére kiírjuk a hibát, hogy ne ragadjanak be
-        document.getElementById('board-score').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
-        document.getElementById('board-streak').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
-        document.getElementById('board-average').innerHTML = "<p style='text-align:center; color:#ff6b6b; padding:20px;'>Hiba az adatok letöltésekor.</p>";
-    }
-}
-
-// Segédfüggvény: HTML táblázat generálása egy tömbből
-function renderTable(containerId, dataArray, valueLabel) {
-    const container = document.getElementById(containerId);
+// --- 7. ESEMÉNYKEZELŐK ÉS PROGRAM INDÍTÁSA ---
+document.addEventListener("DOMContentLoaded", () => {
     
-    if (dataArray.length === 0) {
-        container.innerHTML = "<p style='text-align:center; padding: 20px; color:#aaa;'>Még nincs adat.</p>";
-        return;
-    }
+    const playAgainBtn = document.getElementById("play-again-btn");
+    if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
 
-    let html = `<table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Űrhajós Név</th>
-                            <th style="text-align: right;">${valueLabel}</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-    dataArray.forEach((player, index) => {
-        const rank = index + 1;
-        // Az első 3 helyezett kap egyedi CSS osztályt (arany, ezüst, bronz)
-        const rankClass = rank <= 3 ? `rank-${rank}` : '';
+    // Fizikai billentyűzet (Számítógép) figyelése
+    document.addEventListener("keydown", (e) => {
+        if (isGameOver || isChecking) return;
         
-        // Kinyerjük az értéket attól függően, melyik listában vagyunk
-        const value = player.score !== undefined ? player.score 
-                    : player.max_streak !== undefined ? player.max_streak 
-                    : player.avg;
-
-        html += `<tr>
-                    <td class="${rankClass}">${rank}.</td>
-                    <td class="${rankClass}">${player.username}</td>
-                    <td style="text-align: right; font-family: monospace;">${value}</td>
-                 </tr>`;
+        if (e.key === "Enter") checkGuess();
+        else if (e.key === "Backspace") deleteLetter();
+        else if (/^[a-zA-Z]$/.test(e.key)) addLetter(e.key.toUpperCase());
     });
 
-    html += `</tbody></table>`;
+    // Indító folyamatok
+    createUniverse();
+    setupAuthUI();
+    setupLeaderboard();
     
-    // Extra infó a Precíziós listához
-    if (containerId === 'board-average') {
-        html += `<p style="font-size: 0.8rem; color: #888; text-align: center; margin-top: 15px;">Csak a legalább 5 játékkal rendelkező játékosok láthatóak.</p>`;
+    // Ha a játéktábla létezik (tehát az index.html-en vagyunk), felépítjük a játékot
+    if (document.getElementById("board")) {
+        initKeyboard();
+        resetGame();
     }
-
-    container.innerHTML = html;
-}
-
-// --- FÜGGVÉNYEK MEGHÍVÁSA INDÍTÁSKOR ---
-setupAuthUI(); // Beállítja a headert
-resetGame();   // Lekéri a szót és indítja a táblát
-createUniverse(); // Háttér
+});

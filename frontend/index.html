@@ -17,11 +17,56 @@
                 <div class="user-menu-container">
                     <button id="profile-btn" class="profile-btn">👤</button>
                     <div id="dropdown-menu" class="dropdown-menu">
+                        
+                        <!-- ÚJ: MOBIL HUD (Csak telefonon látszik a menüben) -->
+                        <div id="hud-mobile" class="hud-mobile">
+                            <div class="hud-item">
+                                <span class="hud-label">Pontok</span>
+                                <div>
+                                    <span class="hud-score hud-value">0</span>
+                                    <span class="hud-rank-score hud-rank">#-</span>
+                                </div>
+                            </div>
+                            <div class="hud-item">
+                                <span class="hud-label">Széria</span>
+                                <div>
+                                    <span class="hud-streak hud-value">0</span>
+                                    <span class="hud-rank-streak hud-rank">#-</span>
+                                </div>
+                            </div>
+                            <div class="hud-item">
+                                <span class="hud-label">Átlag</span>
+                                <div>
+                                    <span class="hud-avg hud-value">0</span>
+                                    <span class="hud-rank-avg hud-rank">#-</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <button id="logout-btn">Kijelentkezés</button>
                     </div>
                 </div>
             </div>
         </header>
+
+        <!-- DESKTOP HUD (Csak gépen látszik, középre igazítva) -->
+        <div id="player-hud" class="glass-panel hud-panel">
+            <div class="hud-item">
+                <span class="hud-label">Pontok</span>
+                <span class="hud-score hud-value">0</span>
+                <span class="hud-rank-score hud-rank">#-</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Széria</span>
+                <span class="hud-streak hud-value">0</span>
+                <span class="hud-rank-streak hud-rank">#-</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Átlag</span>
+                <span class="hud-avg hud-value">0</span>
+                <span class="hud-rank-avg hud-rank">#-</span>
+            </div>
+        </div>
         
         <div id="board-container">
             <div id="board"></div>

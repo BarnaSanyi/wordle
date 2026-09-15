@@ -505,3 +505,66 @@ header h1 {
     0% { opacity: 0.1; transform: scale(0.8); }
     100% { opacity: 1; transform: scale(1.2); }
 }
+
+/* --- PLAYER HUD (Asztali és Mobil okos-nézet) --- */
+#player-hud, #hud-mobile {
+    display: none; /* Alapból mindkettő rejtve van */
+}
+
+/* Ha be vagyunk jelentkezve (A JS adja rá a body-ra ezt az osztályt) */
+body.logged-in-state #player-hud,
+body.logged-in-state #hud-mobile {
+    display: flex;
+}
+
+/* 1. ASZTALI NÉZET (Középre igazított kompakt panel) */
+.hud-panel {
+    justify-content: center;
+    gap: 30px; /* Térköz az adatok között */
+    width: fit-content; /* Nem húzzuk szét 100%-ra */
+    margin: 10px auto 0 auto; /* Középre zárás */
+    padding: 8px 25px; 
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.4); 
+}
+
+.hud-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.hud-label { font-size: 0.65rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+.hud-value { font-size: 1.1rem; font-weight: 900; color: var(--txt); }
+.hud-rank { font-size: 0.75rem; color: var(--has); font-weight: bold; margin-top: 2px; }
+
+/* 2. MOBIL NÉZET (A menüben lévő lista) */
+.hud-mobile {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.hud-mobile .hud-item {
+    flex-direction: row; /* Egymás mellé teszi a feliratot és a számot */
+    justify-content: space-between;
+    width: 100%;
+}
+
+.hud-mobile .hud-value { font-size: 1rem; }
+
+/* A legördülő menü picit szélesebb kell legyen, hogy kiférjen a statisztika */
+.dropdown-menu { width: 180px; }
+
+/* --- RESZPONSZÍV HUD VÁLTÓ (Media Query) --- */
+@media (max-width: 600px) {
+    /* Telefonon ELREJTJÜK a nagy HUD-ot */
+    body.logged-in-state #player-hud { display: none !important; }
+}
+@media (min-width: 601px) {
+    /* Gépen ELREJTJÜK a menübe rakott HUD-ot */
+    body.logged-in-state #hud-mobile { display: none !important; }
+}
